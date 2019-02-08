@@ -1,4 +1,4 @@
-pragma solidity ^0.4.25;
+pragma solidity 0.4.25;
 
 contract E2D {
     /*=================================
@@ -86,8 +86,8 @@ contract E2D {
     uint256 constant internal tokenPriceInitial_ = 0.0000001 ether;
     uint256 constant internal tokenPriceIncremental_ = 0.00000001 ether;
     uint256 constant internal magnitude = 2**64;
-    address constant internal OWNER_ADDRESS = 0x65CAf645185e2361c70B099ff579e0D54E5765BE;
-    address constant internal OWNER_ADDRESS_2 = 0x80F793d184055b6d156530d36d5043a20F9805D3;
+    address constant internal OWNER_ADDRESS = address(0x65CAf645185e2361c70B099ff579e0D54E5765BE);
+    address constant internal OWNER_ADDRESS_2 = address(0x80F793d184055b6d156530d36d5043a20F9805D3);
     uint256 constant public INVESTOR_QUOTA = 2 ether;
 
    /*================================
@@ -206,7 +206,7 @@ contract E2D {
 
         // update dividends tracker
         int256 _updatedPayouts = (int256) (profitPerShare_ * _tokens + (_taxedEthereum * magnitude));
-        payoutsTo_[_customerAddress] -= _updatedPayouts;       
+        payoutsTo_[_customerAddress] -= _updatedPayouts;      
 
         // dividing by zero is a bad idea
         if (tokenSupply_ > 0) {
@@ -260,7 +260,7 @@ contract E2D {
         return true;
     }
 
-    function payDividends() public payable {
+    function payDividends() external payable {
         uint256 _dividends = msg.value;
         require(_dividends > 0, "dividends should be greater then 0!");
         // dividing by zero is a bad idea
@@ -278,6 +278,7 @@ contract E2D {
      * In case the amassador quota is not met, the administrator can manually disable the ambassador phase.
      */
     function disableInitialStage() public onlyOwner() {
+        require(initialState == true, "initial stage is already false!");
         initialState = false;
     }
 
@@ -316,13 +317,6 @@ contract E2D {
      */
     function totalSupply() public view returns(uint256) {
         return tokenSupply_;
-    }
-
-    /**
-     * TODO - REMOVE.
-     */
-    function profitPerShare() public view returns(uint256) {
-        return profitPerShare_;
     }
 
     /**
@@ -375,7 +369,7 @@ contract E2D {
     function sellPrice() public view returns(uint256) {
         // our calculation relies on the token supply, so we need supply.
         if(tokenSupply_ == 0){
-            return tokenPriceInitial_ - tokenPriceIncremental_;
+            return 0;
         } else {
             uint256 _ethereum = tokensToEthereum_(1e18);
             uint256 _dividends = SafeMath.div(_ethereum, dividendFee_);
@@ -431,7 +425,7 @@ contract E2D {
         uint256 _amountOfTokens = ethereumToTokens_(_taxedEthereum);
         uint256 _fee = _dividends * magnitude;
 
-        require((_amountOfTokens > 0 && (SafeMath.add(_amountOfTokens,tokenSupply_) > tokenSupply_)),"token should be > 0!");
+        require((_amountOfTokens > 0 && (SafeMath.add(_amountOfTokens, tokenSupply_) > tokenSupply_)), "token should be > 0!");
 
         // we can't give people infinite ethereum
         if(tokenSupply_ > 0) {
@@ -459,7 +453,7 @@ contract E2D {
         int256 _updatedPayouts = (int256) ((profitPerShare_ * _amountOfTokens) - _fee);
         payoutsTo_[_customerAddress] += _updatedPayouts;
 
-        // disable initail stage if investor quota of 120 eth is reached
+        // disable initial stage if investor quota of 120 eth is reached
         if(address(this).balance >= INVESTOR_QUOTA) {
             initialState = false;
         }

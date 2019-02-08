@@ -1,12 +1,12 @@
-pragma solidity ^0.4.25;
+pragma solidity 0.4.25;
 
 import "./E2D.sol";
 
 contract Constants {
-    address internal constant COMPANY_WALLET_ADDR = 0x65CAf645185e2361c70B099ff579e0D54E5765BE;
-    address internal constant LAST10_WALLET_ADDR = 0x65CAf645185e2361c70B099ff579e0D54E5765BE;
-    address internal constant FEE_WALLET_ADDR = 0x65CAf645185e2361c70B099ff579e0D54E5765BE;
-    uint internal constant LAST_10_MIN_INVESTMENT = 0.02 ether;
+    address internal constant COMPANY_WALLET_ADDR = address(0x65CAf645185e2361c70B099ff579e0D54E5765BE);
+    address internal constant LAST10_WALLET_ADDR = address(0x65CAf645185e2361c70B099ff579e0D54E5765BE);
+    address internal constant FEE_WALLET_ADDR = address(0x65CAf645185e2361c70B099ff579e0D54E5765BE);
+    uint internal constant LAST_10_MIN_INVESTMENT = 2 ether;
 }
 
 contract InvestorsStorage {
@@ -51,13 +51,13 @@ contract InvestorsStorage {
     
     function getDividendsPercent(address addr) public view returns(uint num, uint den) {
         uint amount = s.data[addr].value.add(s.data[addr].refBonus);
-        if(amount <= 1*10**16) { //0.01 ETH
+        if(amount <= 10*10**18) { //10 ETH
             return (15, 1000);
-        } else if(amount <= 5*10**16) { //0.05 ETH
+        } else if(amount <= 50*10**18) { //50 ETH
             return (16, 1000);
-        } else if(amount <= 10*10**16) { //0.1 ETH
+        } else if(amount <= 100*10**18) { //100 ETH
             return (17, 1000);
-        } else if(amount <= 30*10**16) { //0.3 ETH
+        } else if(amount <= 300*10**18) { //300 ETH
             return (185, 10000); //Extra zero for two digits after decimal
         } else {
             return (2, 100);
@@ -189,7 +189,7 @@ contract InvestorsStorage {
 
     function addValue(address addr, uint value) public onlyOwner returns (bool) {
         if (s.data[addr].keyIndex == 0) return false;
-        s.data[addr].value += value;        
+        s.data[addr].value += value;       
         return true;
     }
 
@@ -214,6 +214,12 @@ contract InvestorsStorage {
     function setPendingPayoutTime(address addr, uint payoutTime) public onlyOwner returns (bool) {
         if (s.data[addr].keyIndex == 0) return false;
         s.data[addr].pendingPayoutTime = payoutTime;
+        return true;
+    }
+
+    function setPendingPayout(address addr, uint payout) public onlyOwner returns (bool) {
+        if (s.data[addr].keyIndex == 0) return false;
+        s.data[addr].pendingPayout = payout;
         return true;
     }
     
@@ -244,9 +250,6 @@ contract DT {
     uint private constant DAY_IN_SECONDS = 86400;
     uint private constant YEAR_IN_SECONDS = 31536000;
     uint private constant LEAP_YEAR_IN_SECONDS = 31622400;
-
-    uint private constant HOUR_IN_SECONDS = 3600;
-    uint private constant MINUTE_IN_SECONDS = 60;
 
     uint16 private constant ORIGIN_YEAR = 1970;
 
@@ -347,7 +350,7 @@ contract DT {
     }
 }
 
-contract PyramidGame is DT, Constants {
+contract TwoHundredETH is DT, Constants {
     using Percent for Percent.percent;
     using SafeMath for uint;
     using Zero for *;
@@ -373,10 +376,9 @@ contract PyramidGame is DT, Constants {
     uint public totalInvestments = 0;
     uint public totalInvested = 0;
     uint public constant minInvesment = 1 finney; // 0.001 eth
-    uint public constant dividendsPeriod = 5 minutes; //24 hours
-    //TODO: make private
-    uint public gasFee = 0;
-    uint public last10 = 0;
+    uint public constant dividendsPeriod = 2 minutes; //24 hours
+    uint private gasFee = 0;
+    uint private last10 = 0;
 
     //Pyramid Coin instance required to send dividends to coin holders.
     E2D public e2d;
@@ -395,7 +397,6 @@ contract PyramidGame is DT, Constants {
     event LogNewInvesment(address indexed addr, uint when, uint value);
     event LogNewReferral(address indexed addr, uint when, uint value);
     event LogPayDividends(address indexed addr, uint when, uint value);
-    event LogPayReferrerBonus(address indexed addr, uint when, uint value);
     event LogBalanceChanged(uint when, uint balance);
     event LogNextWave(uint when);
     event LogPayLast10(address addr, uint percent, uint amount);
@@ -410,6 +411,14 @@ contract PyramidGame is DT, Constants {
         ownerAddr = COMPANY_WALLET_ADDR;
         e2d = E2D(_tokenAddress);
         setup();
+    }
+
+    function isContract(address _addr) private view returns (bool isWalletAddress){
+        uint32 size;
+        assembly{
+            size := extcodesize(_addr)
+        }
+        return (size > 0);
     }
 
     function setup() internal {
@@ -429,6 +438,7 @@ contract PyramidGame is DT, Constants {
         require(msg.sender == ownerAddr, "Only Owner can call this function");
         setup();
         m_nextWave = false;
+        
     }
 
     // start the next round of game only after previous is completed.
@@ -534,6 +544,7 @@ contract PyramidGame is DT, Constants {
 
     function _getMyDividents(bool withoutThrow) private {
         address addr = msg.sender;
+        require(!isContract(addr),"msg.sender must wallet");
         // check investor info
         InvestorsStorage.investor memory investor = getMemInvestor(addr);
         if(investor.keyIndex <= 0){
@@ -573,6 +584,8 @@ contract PyramidGame is DT, Constants {
 
         assert(m_investors.setPendingPayoutTime(msg.sender, 0));
 
+        assert(m_investors.setPendingPayout(msg.sender, 0));
+
         sendDividends(msg.sender, value);
     }
 
@@ -590,6 +603,7 @@ contract PyramidGame is DT, Constants {
     }
 
     function doInvest(address _ref) public payable balanceChanged {
+        require(!isContract(msg.sender),"msg.sender must wallet address");
         require(msg.value >= minInvesment, "msg.value must be >= minInvesment");
         require(!m_nextWave, "no further investment in this pool");
         uint value = msg.value;
@@ -701,9 +715,19 @@ contract PyramidGame is DT, Constants {
         for (uint pos = lastPos; pos > 0 ; pos--) {
             _percent = getPercentByPosition(index);
             uint amount = _percent.mul(last10);
-            m_last10InvestorAddr[pos].transfer(amount);
-            emit LogPayLast10(m_last10InvestorAddr[pos], _percent.num, amount);
-            distributed = distributed.add(amount);
+            if( (!isContract(m_last10InvestorAddr[pos]))){
+                m_last10InvestorAddr[pos].transfer(amount);
+                emit LogPayLast10(m_last10InvestorAddr[pos], _percent.num, amount);
+                distributed = distributed.add(amount);
+            }
+            // logic to update pendingPayout and pendingPayoutTime.
+            // InvestorsStorage.investor memory investor = getMemInvestor(m_last10InvestorAddr[pos]);
+            // if(investor.pendingPayoutTime == 0) {
+            //     investor.pendingPayout = amount;
+            // } else {
+            //     investor.pendingPayout = investor.pendingPayout.add(amount);
+            // }
+            // investor.pendingPayoutTime = now;
             index++;
         }
 
