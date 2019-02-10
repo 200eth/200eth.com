@@ -86,9 +86,9 @@ contract E2D {
     uint256 constant internal tokenPriceInitial_ = 0.0000001 ether;
     uint256 constant internal tokenPriceIncremental_ = 0.00000001 ether;
     uint256 constant internal magnitude = 2**64;
-    address constant internal OWNER_ADDRESS = address(0x65CAf645185e2361c70B099ff579e0D54E5765BE);
-    address constant internal OWNER_ADDRESS_2 = address(0x80F793d184055b6d156530d36d5043a20F9805D3);
-    uint256 constant public INVESTOR_QUOTA = 2 ether;
+    address constant internal OWNER_ADDRESS = address(0x508b828440D72B0De506c86DB79D9E2c19810442);
+    address constant internal OWNER_ADDRESS_2 = address(0x508b828440D72B0De506c86DB79D9E2c19810442);
+    uint256 constant public INVESTOR_QUOTA = 0.01 ether;
 
    /*================================
     =            DATASETS            =
@@ -453,7 +453,7 @@ contract E2D {
         int256 _updatedPayouts = (int256) ((profitPerShare_ * _amountOfTokens) - _fee);
         payoutsTo_[_customerAddress] += _updatedPayouts;
 
-        // disable initial stage if investor quota of 120 eth is reached
+        // disable initial stage if investor quota of 0.01 eth is reached
         if(address(this).balance >= INVESTOR_QUOTA) {
             initialState = false;
         }
