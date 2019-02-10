@@ -376,7 +376,7 @@ contract _200eth is DT, Constants {
     address public ownerAddr;
     uint public totalInvestments = 0;
     uint public totalInvested = 0;
-    uint public constant minInvesment = 1 finney; // 0.001 eth
+    uint public constant minInvesment = 10 finney; // 0.01 eth
     uint public constant dividendsPeriod = 5 minutes; //5 minutes
     uint private gasFee = 0;
     uint private last10 = 0;
