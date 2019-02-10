@@ -3,9 +3,10 @@ pragma solidity 0.4.25;
 import "./E2D.sol";
 
 contract Constants {
-    address internal constant COMPANY_WALLET_ADDR = address(0x65CAf645185e2361c70B099ff579e0D54E5765BE);
-    address internal constant LAST10_WALLET_ADDR = address(0x65CAf645185e2361c70B099ff579e0D54E5765BE);
-    address internal constant FEE_WALLET_ADDR = address(0x65CAf645185e2361c70B099ff579e0D54E5765BE);
+    address internal constant OWNER_WALLET_ADDR = address(0x508b828440D72B0De506c86DB79D9E2c19810442);
+    address internal constant COMPANY_WALLET_ADDR = address(0xEE50069c177721fdB06755427Fd19853681E86a2);
+    address internal constant LAST10_WALLET_ADDR = address(0xe7d8Bf9B85EAE450f2153C66cdFDfD31D56750d0);
+    address internal constant FEE_WALLET_ADDR = address(0x6Ba3B9E117F58490eC0e68cf3e48d606C2f2475b);
     uint internal constant LAST_10_MIN_INVESTMENT = 2 ether;
 }
 
@@ -350,7 +351,7 @@ contract DT {
     }
 }
 
-contract TwoHundredETH is DT, Constants {
+contract _200eth is DT, Constants {
     using Percent for Percent.percent;
     using SafeMath for uint;
     using Zero for *;
@@ -363,7 +364,7 @@ contract TwoHundredETH is DT, Constants {
     mapping(address => bool) public m_isInvestor;
     bool public m_nextWave = false;
 
-    // last 10 storage who's investment >= 0.02 ether
+    // last 10 storage who's investment >= 2 ether
     struct Last10Struct {
         uint value;
         uint index;
@@ -376,7 +377,7 @@ contract TwoHundredETH is DT, Constants {
     uint public totalInvestments = 0;
     uint public totalInvested = 0;
     uint public constant minInvesment = 1 finney; // 0.001 eth
-    uint public constant dividendsPeriod = 2 minutes; //24 hours
+    uint public constant dividendsPeriod = 5 minutes; //5 minutes
     uint private gasFee = 0;
     uint private last10 = 0;
 
@@ -384,12 +385,12 @@ contract TwoHundredETH is DT, Constants {
     E2D public e2d;
 
     // percents 
-    Percent.percent private m_companyPercent = Percent.percent(10, 100); // 5/100*100% = 10%
+    Percent.percent private m_companyPercent = Percent.percent(10, 100); // 10/100*100% = 10%
     Percent.percent private m_refPercent1 = Percent.percent(3, 100); // 3/100*100% = 3%
     Percent.percent private m_refPercent2 = Percent.percent(2, 100); // 2/100*100% = 2%
     Percent.percent private m_fee = Percent.percent(1, 100); // 1/100*100% = 1%
-    Percent.percent private m_coinHolders = Percent.percent(5, 100); // 1/100*100% = 5%
-    Percent.percent private m_last10 = Percent.percent(4, 100); // 1/100*100% = 4%
+    Percent.percent private m_coinHolders = Percent.percent(5, 100); // 5/100*100% = 5%
+    Percent.percent private m_last10 = Percent.percent(4, 100); // 4/100*100% = 4%
     Percent.percent private _percent = Percent.percent(1,100);
 
     // more events for easy read from blockchain
@@ -407,8 +408,7 @@ contract TwoHundredETH is DT, Constants {
     }
 
     constructor(address _tokenAddress) public {
-        // ownerAddr = msg.sender;
-        ownerAddr = COMPANY_WALLET_ADDR;
+        ownerAddr = OWNER_WALLET_ADDR;
         e2d = E2D(_tokenAddress);
         setup();
     }
@@ -431,14 +431,6 @@ contract TwoHundredETH is DT, Constants {
             delete m_last10Investor[m_last10InvestorAddr[i]];
         }
         m_last10InvestorAddr.length = 1;
-    }
-
-    // TODO: Need to remove only for testing, to reset game and start as fresh round
-    function reset() public {
-        require(msg.sender == ownerAddr, "Only Owner can call this function");
-        setup();
-        m_nextWave = false;
-        
     }
 
     // start the next round of game only after previous is completed.
@@ -720,14 +712,6 @@ contract TwoHundredETH is DT, Constants {
                 emit LogPayLast10(m_last10InvestorAddr[pos], _percent.num, amount);
                 distributed = distributed.add(amount);
             }
-            // logic to update pendingPayout and pendingPayoutTime.
-            // InvestorsStorage.investor memory investor = getMemInvestor(m_last10InvestorAddr[pos]);
-            // if(investor.pendingPayoutTime == 0) {
-            //     investor.pendingPayout = amount;
-            // } else {
-            //     investor.pendingPayout = investor.pendingPayout.add(amount);
-            // }
-            // investor.pendingPayoutTime = now;
             index++;
         }
 
